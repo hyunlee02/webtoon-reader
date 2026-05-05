@@ -329,13 +329,22 @@ document.getElementById('signout-btn').addEventListener('click', () => {
 
 // ── Drive API ────────────────────────────────────────────
 async function driveList(folderId) {
-  const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
-  const fields = encodeURIComponent('files(id,name,mimeType,size)');
-  const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&orderBy=name&pageSize=200`;
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!resp.ok) throw new Error('Drive API error: ' + resp.status);
-  const data = await resp.json();
-  return data.files || [];
+  const query  = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+  const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,size)');
+  let allFiles = [];
+  let pageToken = null;
+
+  do {
+    let url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&orderBy=name&pageSize=1000`;
+    if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!resp.ok) throw new Error('Drive API error: ' + resp.status);
+    const data = await resp.json();
+    allFiles = allFiles.concat(data.files || []);
+    pageToken = data.nextPageToken || null;
+  } while (pageToken);
+
+  return allFiles;
 }
 
 async function driveDownload(fileId) {
