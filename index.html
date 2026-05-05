@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webtoon Reader</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #0d0d0d;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+  --border: #252525;
+  --accent: #c8a96e;
+  --text: #e2e2e2;
+  --muted: #555;
+  --muted2: #888;
+  --reader-width: 720px;
+  --sidebar-w: 260px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; overflow-x: hidden; }
+
+.screen { display: none; flex-direction: column; min-height: 100vh; }
+.screen.active { display: flex; }
+
+/* ── LOGIN ── */
+#login-screen {
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 40px 20px;
+}
+.logo-text { font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--accent); }
+.main-title { font-family: 'Noto Sans KR', sans-serif; font-size: clamp(36px, 7vw, 72px); font-weight: 700; text-align: center; line-height: 1.1; }
+.main-title span { color: var(--accent); }
+.google-btn {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); font-family: 'DM Mono', monospace;
+  font-size: 12px; letter-spacing: 0.1em;
+  padding: 16px 28px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.google-btn:hover { border-color: var(--accent); background: var(--surface2); }
+.google-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.login-note { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-align: center; }
+
+/* ── DRIVE BROWSER ── */
+#browser-screen { }
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(13,13,13,0.96); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px; display: flex; align-items: center; gap: 12px;
+}
+.topbar-title { flex: 1; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--muted2); font-family: 'DM Mono', monospace;
+  font-size: 10px; padding: 6px 12px; cursor: pointer;
+  letter-spacing: 0.1em; transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.btn:disabled { opacity: 0.25; cursor: default; }
+
+.breadcrumb { padding: 12px 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.crumb { font-size: 11px; color: var(--muted2); cursor: pointer; transition: color 0.15s; }
+.crumb:hover { color: var(--accent); }
+.crumb-sep { font-size: 11px; color: var(--muted); }
+.crumb.current { color: var(--text); cursor: default; }
+
+.file-grid { padding: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.file-card {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.file-card:hover { border-color: var(--accent); background: var(--surface2); }
+.file-icon { font-size: 24px; }
+.file-name { font-family: 'Noto Sans KR', sans-serif; font-size: 12px; color: var(--text); line-height: 1.4; word-break: break-word; }
+.file-meta { font-size: 10px; color: var(--muted); }
+.file-card.zip { border-left: 2px solid var(--accent); }
+
+.empty-state { padding: 80px 20px; text-align: center; color: var(--muted); font-size: 12px; line-height: 2.5; }
+
+/* ── LIBRARY ── */
+#library-screen { }
+.lib-content { padding: 24px; max-width: 960px; margin: 0 auto; }
+.section-label { font-size: 10px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+.ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.ep-card {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ep-card:hover { border-color: var(--accent); background: var(--surface2); }
+.ep-num { font-size: 10px; color: var(--accent); letter-spacing: 0.2em; }
+.ep-name { font-family: 'Noto Sans KR', sans-serif; font-size: 12px; color: var(--text); line-height: 1.4; word-break: break-word; }
+.ep-size { font-size: 10px; color: var(--muted); }
+
+/* ── READER ── */
+#reader-screen { }
+.reader-topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,13,13,0.96); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+}
+.reader-title { flex: 1; font-family: 'Noto Sans KR', sans-serif; font-size: 12px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reader-counter { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.width-wrap { display: flex; align-items: center; gap: 8px; }
+.width-label { font-size: 9px; color: var(--muted); letter-spacing: 0.15em; }
+.width-slider { -webkit-appearance: none; width: 72px; height: 1px; background: var(--border); outline: none; cursor: pointer; }
+.width-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+
+#ep-sidebar {
+  position: fixed; top: 0; right: 0; width: var(--sidebar-w); height: 100vh;
+  background: #0a0a0a; border-left: 1px solid var(--border);
+  z-index: 200; transform: translateX(100%);
+  transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+  display: flex; flex-direction: column;
+}
+#ep-sidebar.open { transform: translateX(0); }
+.sidebar-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.sidebar-head-title { font-size: 9px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--muted); }
+.close-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; transition: color 0.15s; }
+.close-btn:hover { color: var(--text); }
+.sidebar-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+.sidebar-list::-webkit-scrollbar { width: 3px; }
+.sidebar-list::-webkit-scrollbar-thumb { background: var(--border); }
+.sidebar-ep {
+  padding: 10px 20px; font-size: 11px; color: var(--muted); cursor: pointer;
+  transition: color 0.12s, background 0.12s; border-left: 2px solid transparent;
+  font-family: 'Noto Sans KR', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sidebar-ep:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+.sidebar-ep.active { color: var(--accent); border-left-color: var(--accent); background: rgba(200,169,110,0.05); }
+
+#sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 199; }
+#sidebar-overlay.show { display: block; }
+
+#reader-body { display: flex; flex-direction: column; align-items: center; padding-bottom: 100px; }
+#image-strip { width: 100%; max-width: var(--reader-width); display: flex; flex-direction: column; }
+#image-strip img { width: 100%; height: auto; display: block; }
+
+.loading-overlay {
+  position: fixed; inset: 0; background: rgba(13,13,13,0.9);
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px; z-index: 500;
+}
+.loading-overlay.show { display: flex; }
+.loading-spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 11px; color: var(--muted2); letter-spacing: 0.1em; }
+
+.bottom-nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 100; }
+.bottom-nav .btn { padding: 10px 20px; background: rgba(13,13,13,0.96); backdrop-filter: blur(12px); font-size: 10px; }
+
+#loading-bar { position: fixed; top: 0; left: 0; height: 1px; background: var(--accent); z-index: 999; transition: width 0.3s, opacity 0.3s; width: 0; opacity: 0; }
+
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); }
+
+@media (max-width: 600px) {
+  .width-wrap { display: none; }
+  :root { --reader-width: 100vw; }
+  .ep-grid { grid-template-columns: 1fr 1fr; }
+  .file-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="loading-bar"></div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Loading...</div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="screen active">
+  <div class="logo-text">웹툰 리더</div>
+  <h1 class="main-title">Webtoon<br><span>Reader</span></h1>
+  <button class="google-btn" id="login-btn">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+    Sign in with Google
+  </button>
+  <div class="login-note">Only you can access your files — private to your Google account</div>
+</div>
+
+<!-- DRIVE BROWSER -->
+<div id="browser-screen" class="screen">
+  <div class="topbar">
+    <span class="topbar-title">📁 Google Drive</span>
+    <button class="btn" id="signout-btn">Sign Out</button>
+  </div>
+  <div class="breadcrumb" id="breadcrumb"></div>
+  <div class="file-grid" id="file-grid"></div>
+</div>
+
+<!-- LIBRARY (ZIP list) -->
+<div id="library-screen" class="screen">
+  <div class="topbar">
+    <button class="btn" id="lib-back-btn">← Drive</button>
+    <span class="topbar-title" id="lib-title">—</span>
+    <span style="font-size:10px;color:var(--muted)" id="lib-count"></span>
+  </div>
+  <div class="lib-content">
+    <div class="section-label">Episodes</div>
+    <div class="ep-grid" id="ep-grid"></div>
+  </div>
+</div>
+
+<!-- READER -->
+<div id="reader-screen" class="screen">
+  <div id="sidebar-overlay"></div>
+  <div id="ep-sidebar">
+    <div class="sidebar-head">
+      <span class="sidebar-head-title">Episodes</span>
+      <button class="close-btn" id="sidebar-close">✕</button>
+    </div>
+    <div class="sidebar-list" id="sidebar-list"></div>
+  </div>
+
+  <div class="reader-topbar">
+    <button class="btn" id="reader-back-btn">← List</button>
+    <button class="btn" id="sidebar-open-btn">☰</button>
+    <span class="reader-title" id="reader-ep-title">—</span>
+    <div class="width-wrap">
+      <span class="width-label">WIDTH</span>
+      <input type="range" class="width-slider" id="width-slider" min="400" max="1200" value="720">
+    </div>
+    <span class="reader-counter" id="reader-counter"></span>
+  </div>
+
+  <div id="reader-body">
+    <div id="image-strip"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="btn" id="prev-btn">← PREV</button>
+    <button class="btn" id="next-btn">NEXT →</button>
+  </div>
+</div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+const CLIENT_ID = '970593458602-3ju6cggqfsvhpl57f6f29ou6fga9496d.apps.googleusercontent.com';
+const SCOPES    = 'https://www.googleapis.com/auth/drive.readonly';
+const API_KEY   = ''; // not needed for OAuth user auth
+
+let accessToken = null;
+let folderStack = [{ id: 'root', name: 'My Drive' }];
+let currentZips = [];
+let currentEp   = 0;
+let imageURLs   = [];
+
+// ── Screen ──────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Loading ──────────────────────────────────────────────
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text || 'Loading...';
+  document.getElementById('loading-overlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('show');
+}
+
+// ── Auth ─────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', () => {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.access_token) {
+        accessToken = resp.access_token;
+        showScreen('browser-screen');
+        loadFolder('root');
+      }
+    }
+  });
+  client.requestAccessToken();
+});
+
+document.getElementById('signout-btn').addEventListener('click', () => {
+  accessToken = null;
+  showScreen('login-screen');
+});
+
+// ── Drive API ────────────────────────────────────────────
+async function driveList(folderId) {
+  const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+  const fields = encodeURIComponent('files(id,name,mimeType,size)');
+  const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&orderBy=name&pageSize=200`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!resp.ok) throw new Error('Drive API error: ' + resp.status);
+  const data = await resp.json();
+  return data.files || [];
+}
+
+async function driveDownload(fileId) {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!resp.ok) throw new Error('Download error: ' + resp.status);
+  return resp.arrayBuffer();
+}
+
+// ── Browser ──────────────────────────────────────────────
+async function loadFolder(folderId) {
+  showLoading('Loading folder...');
+  try {
+    const files = await driveList(folderId);
+    renderFiles(files);
+    renderBreadcrumb();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+  hideLoading();
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
+  folderStack.forEach((f, i) => {
+    const span = document.createElement('span');
+    span.className = 'crumb' + (i === folderStack.length - 1 ? ' current' : '');
+    span.textContent = f.name;
+    if (i < folderStack.length - 1) {
+      span.addEventListener('click', () => {
+        folderStack = folderStack.slice(0, i + 1);
+        loadFolder(f.id);
+      });
+    }
+    bc.appendChild(span);
+    if (i < folderStack.length - 1) {
+      const sep = document.createElement('span');
+      sep.className = 'crumb-sep';
+      sep.textContent = '/';
+      bc.appendChild(sep);
+    }
+  });
+}
+
+function renderFiles(files) {
+  const grid = document.getElementById('file-grid');
+  grid.innerHTML = '';
+
+  const folders = files.filter(f => f.mimeType === 'application/vnd.google-apps.folder');
+  const zips    = files.filter(f => f.name.toLowerCase().endsWith('.zip'));
+  const sorted  = [...folders, ...zips];
+
+  if (!sorted.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No folders or ZIP files found here.<br>Navigate to a folder containing your webtoon ZIPs.</div>';
+    return;
+  }
+
+  sorted.forEach(file => {
+    const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
+    const isZip    = file.name.toLowerCase().endsWith('.zip');
+
+    const card = document.createElement('div');
+    card.className = 'file-card' + (isZip ? ' zip' : '');
+    card.innerHTML = `
+      <div class="file-icon">${isFolder ? '📁' : '📦'}</div>
+      <div class="file-name">${file.name}</div>
+      <div class="file-meta">${isFolder ? 'Folder' : formatSize(file.size)}</div>
+    `;
+
+    if (isFolder) {
+      card.addEventListener('click', () => {
+        folderStack.push({ id: file.id, name: file.name });
+        loadFolder(file.id);
+      });
+    } else if (isZip) {
+      // Collect all zips in this folder for the library view
+      card.addEventListener('click', () => {
+        const allZips = sorted.filter(f => f.name.toLowerCase().endsWith('.zip'));
+        openLibrary(allZips, file);
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function formatSize(bytes) {
+  if (!bytes) return '';
+  const mb = bytes / 1024 / 1024;
+  return mb.toFixed(1) + ' MB';
+}
+
+// ── Library ──────────────────────────────────────────────
+function openLibrary(zips, clickedFile) {
+  currentZips = zips.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const folderName = folderStack[folderStack.length - 1].name;
+
+  document.getElementById('lib-title').textContent  = folderName;
+  document.getElementById('lib-count').textContent  = zips.length + ' episodes';
+
+  const grid = document.getElementById('ep-grid');
+  grid.innerHTML = '';
+
+  const sidebarList = document.getElementById('sidebar-list');
+  sidebarList.innerHTML = '';
+
+  currentZips.forEach((zip, i) => {
+    const name = zip.name.replace(/\.zip$/i, '');
+
+    const card = document.createElement('div');
+    card.className = 'ep-card';
+    card.innerHTML = `
+      <div class="ep-num">EP ${String(i + 1).padStart(3, '0')}</div>
+      <div class="ep-name">${name}</div>
+      <div class="ep-size">${formatSize(zip.size)}</div>
+    `;
+    card.addEventListener('click', () => openEpisode(i));
+    grid.appendChild(card);
+
+    const sidebarItem = document.createElement('div');
+    sidebarItem.className = 'sidebar-ep';
+    sidebarItem.textContent = name;
+    sidebarItem.dataset.i = i;
+    sidebarItem.addEventListener('click', () => { openEpisode(i); closeSidebar(); });
+    sidebarList.appendChild(sidebarItem);
+  });
+
+  showScreen('library-screen');
+
+  // Auto-open clicked episode
+  const clickedIdx = currentZips.findIndex(z => z.id === clickedFile.id);
+  if (clickedIdx >= 0) openEpisode(clickedIdx);
+}
+
+// ── Reader ───────────────────────────────────────────────
+async function openEpisode(idx) {
+  currentEp = idx;
+  const zip = currentZips[idx];
+  const name = zip.name.replace(/\.zip$/i, '');
+
+  document.getElementById('reader-ep-title').textContent = name;
+  document.getElementById('reader-counter').textContent  = `${idx + 1} / ${currentZips.length}`;
+  document.getElementById('prev-btn').disabled = idx === 0;
+  document.getElementById('next-btn').disabled = idx === currentZips.length - 1;
+  updateSidebarActive(idx);
+
+  showScreen('reader-screen');
+  showLoading('Downloading episode from Drive...');
+
+  // Revoke old URLs
+  imageURLs.forEach(u => URL.revokeObjectURL(u));
+  imageURLs = [];
+
+  try {
+    const buffer  = await driveDownload(zip.id);
+    showLoading('Extracting images...');
+    const zipData = await JSZip.loadAsync(buffer);
+
+    const imageFiles = [];
+    zipData.forEach((path, entry) => {
+      if (!entry.dir && /\.(jpe?g|png|gif|webp|bmp)$/i.test(path)) {
+        imageFiles.push({ path, entry });
+      }
+    });
+    imageFiles.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+
+    const strip = document.getElementById('image-strip');
+    strip.innerHTML = '';
+
+    for (let i = 0; i < imageFiles.length; i++) {
+      const { path, entry } = imageFiles[i];
+      const blob = await entry.async('blob');
+      const ext  = path.split('.').pop().toLowerCase();
+      const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const url  = URL.createObjectURL(new Blob([blob], { type: mime }));
+      imageURLs.push(url);
+
+      const img   = document.createElement('img');
+      img.src     = url;
+      img.alt     = `Page ${i + 1}`;
+      img.loading = i < 4 ? 'eager' : 'lazy';
+      strip.appendChild(img);
+    }
+
+    window.scrollTo(0, 0);
+  } catch(e) {
+    alert('Failed to load episode: ' + e.message);
+  }
+
+  hideLoading();
+}
+
+function updateSidebarActive(idx) {
+  document.querySelectorAll('.sidebar-ep').forEach((el, i) => el.classList.toggle('active', i === idx));
+  const active = document.querySelector('.sidebar-ep.active');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+// ── Navigation ───────────────────────────────────────────
+document.getElementById('prev-btn').addEventListener('click', () => openEpisode(currentEp - 1));
+document.getElementById('next-btn').addEventListener('click', () => openEpisode(currentEp + 1));
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('reader-screen').classList.contains('active')) return;
+  if (e.key === 'ArrowLeft')  openEpisode(currentEp - 1);
+  if (e.key === 'ArrowRight') openEpisode(currentEp + 1);
+});
+
+// ── Back buttons ─────────────────────────────────────────
+document.getElementById('lib-back-btn').addEventListener('click', () => showScreen('browser-screen'));
+document.getElementById('reader-back-btn').addEventListener('click', () => showScreen('library-screen'));
+
+// ── Width ─────────────────────────────────────────────────
+document.getElementById('width-slider').addEventListener('input', function() {
+  document.getElementById('image-strip').style.maxWidth = this.value + 'px';
+});
+
+// ── Sidebar ──────────────────────────────────────────────
+document.getElementById('sidebar-open-btn').addEventListener('click', openSidebar);
+document.getElementById('sidebar-close').addEventListener('click', closeSidebar);
+document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+function openSidebar()  { document.getElementById('ep-sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show'); }
+function closeSidebar() { document.getElementById('ep-sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
+</script>
+</body>
+</html>
