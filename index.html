@@ -268,6 +268,23 @@ let currentZips = [];
 let currentEp   = 0;
 let imageURLs   = [];
 
+// Try to restore token from localStorage
+function restoreToken() {
+  const saved = localStorage.getItem('gtoken');
+  const exp   = localStorage.getItem('gtoken_exp');
+  if (saved && exp && Date.now() < parseInt(exp)) {
+    accessToken = saved;
+    showScreen('browser-screen');
+    loadFolder('root');
+    return true;
+  }
+  return false;
+}
+
+window.addEventListener('load', () => {
+  restoreToken();
+});
+
 // ── Screen ──────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -292,6 +309,9 @@ document.getElementById('login-btn').addEventListener('click', () => {
     callback: (resp) => {
       if (resp.access_token) {
         accessToken = resp.access_token;
+        // Save token with 55-minute expiry (tokens last 1hr)
+        localStorage.setItem('gtoken', accessToken);
+        localStorage.setItem('gtoken_exp', Date.now() + 55 * 60 * 1000);
         showScreen('browser-screen');
         loadFolder('root');
       }
@@ -302,6 +322,8 @@ document.getElementById('login-btn').addEventListener('click', () => {
 
 document.getElementById('signout-btn').addEventListener('click', () => {
   accessToken = null;
+  localStorage.removeItem('gtoken');
+  localStorage.removeItem('gtoken_exp');
   showScreen('login-screen');
 });
 
