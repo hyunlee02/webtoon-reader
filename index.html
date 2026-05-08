@@ -478,7 +478,7 @@ function openLibrary(zips, clickedFile) {
   const sidebarList = document.getElementById('sidebar-list');
   sidebarList.innerHTML = '';
 
-  const showKey = makeShowKey(folderName);
+  const showKey = folderStack[folderStack.length - 1].id;
   const history = getShowHistory(showKey);
   const resumeBtn = document.getElementById('resume-btn');
 
@@ -526,7 +526,7 @@ async function openEpisode(idx) {
   currentEp = idx;
   const zip = currentZips[idx];
   const name = zip.name.replace(/\.zip$/i, '');
-  const showKey = makeShowKey(folderStack[folderStack.length - 1]?.name || '');
+  const showKey = folderStack[folderStack.length - 1]?.id || 'default';
   markRead(showKey, idx);
 
   document.getElementById('reader-ep-title').textContent = name;
