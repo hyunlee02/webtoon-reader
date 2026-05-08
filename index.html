@@ -101,6 +101,13 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monosp
 .ep-num { font-size: 10px; color: var(--accent); letter-spacing: 0.2em; }
 .ep-name { font-family: 'Noto Sans KR', sans-serif; font-size: 12px; color: var(--text); line-height: 1.4; word-break: break-word; }
 .ep-size { font-size: 10px; color: var(--muted); }
+.ep-card.read { border-left: 2px solid #444; opacity: 0.6; }
+.ep-card.read .ep-num { color: var(--muted); }
+.ep-card.last-read { border-left: 2px solid var(--accent); opacity: 1; position: relative; }
+.ep-card.last-read::after { content: "마지막"; position: absolute; top: 8px; right: 8px; font-size: 9px; color: var(--accent); letter-spacing: 0.1em; }
+.resume-btn { display: none; margin: 0 24px 16px; padding: 10px 20px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); font-family: "DM Mono", monospace; font-size: 11px; letter-spacing: 0.1em; cursor: pointer; transition: background 0.15s; }
+.resume-btn:hover { background: var(--surface2); }
+.resume-btn.show { display: block; }
 
 /* ── READER ── */
 #reader-screen { }
@@ -214,6 +221,7 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monosp
     <span class="topbar-title" id="lib-title">—</span>
     <span style="font-size:10px;color:var(--muted)" id="lib-count"></span>
   </div>
+  <button class="resume-btn" id="resume-btn">▶ 이어보기</button>
   <div class="lib-content">
     <div class="section-label">Episodes</div>
     <div class="ep-grid" id="ep-grid"></div>
@@ -263,6 +271,24 @@ const SCOPES    = 'https://www.googleapis.com/auth/drive.readonly';
 const API_KEY   = ''; // not needed for OAuth user auth
 
 let accessToken = null;
+
+// ── Read History ─────────────────────────────────────────
+function getReadHistory() {
+  try { return JSON.parse(localStorage.getItem('readHistory') || '{}'); } catch { return {}; }
+}
+function markRead(showKey, epIdx) {
+  const h = getReadHistory();
+  if (!h[showKey]) h[showKey] = { lastRead: epIdx, read: [] };
+  h[showKey].lastRead = epIdx;
+  if (!h[showKey].read.includes(epIdx)) h[showKey].read.push(epIdx);
+  localStorage.setItem('readHistory', JSON.stringify(h));
+}
+function getShowHistory(showKey) {
+  return getReadHistory()[showKey] || { lastRead: null, read: [] };
+}
+function makeShowKey(title) {
+  return title.trim().toLowerCase().replace(/\s+/g, '_');
+}
 let folderStack = [{ id: 'root', name: 'My Drive' }];
 let currentZips = [];
 let currentEp   = 0;
@@ -452,11 +478,26 @@ function openLibrary(zips, clickedFile) {
   const sidebarList = document.getElementById('sidebar-list');
   sidebarList.innerHTML = '';
 
+  const showKey = makeShowKey(folderName);
+  const history = getShowHistory(showKey);
+  const resumeBtn = document.getElementById('resume-btn');
+
+  if (history.lastRead !== null) {
+    resumeBtn.classList.add('show');
+    const lastName = currentZips[history.lastRead]?.name.replace(/\.zip$/i, '') || '';
+    resumeBtn.textContent = '▶ 이어보기 — ' + lastName;
+    resumeBtn.onclick = () => openEpisode(history.lastRead);
+  } else {
+    resumeBtn.classList.remove('show');
+  }
+
   currentZips.forEach((zip, i) => {
     const name = zip.name.replace(/\.zip$/i, '');
+    const isRead = history.read.includes(i);
+    const isLast = history.lastRead === i;
 
     const card = document.createElement('div');
-    card.className = 'ep-card';
+    card.className = 'ep-card' + (isLast ? ' last-read' : isRead ? ' read' : '');
     card.innerHTML = `
       <div class="ep-num">EP ${String(i + 1).padStart(3, '0')}</div>
       <div class="ep-name">${name}</div>
@@ -485,6 +526,8 @@ async function openEpisode(idx) {
   currentEp = idx;
   const zip = currentZips[idx];
   const name = zip.name.replace(/\.zip$/i, '');
+  const showKey = makeShowKey(folderStack[folderStack.length - 1]?.name || '');
+  markRead(showKey, idx);
 
   document.getElementById('reader-ep-title').textContent = name;
   document.getElementById('reader-counter').textContent  = `${idx + 1} / ${currentZips.length}`;
