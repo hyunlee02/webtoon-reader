@@ -295,13 +295,23 @@ let currentEp   = 0;
 let imageURLs   = [];
 
 // Try to restore token from localStorage
+function saveFolderStack() {
+  localStorage.setItem('folderStack', JSON.stringify(folderStack));
+}
+function restoreFolderStack() {
+  try {
+    const saved = localStorage.getItem('folderStack');
+    if (saved) folderStack = JSON.parse(saved);
+  } catch {}
+}
 function restoreToken() {
   const saved = localStorage.getItem('gtoken');
   const exp   = localStorage.getItem('gtoken_exp');
   if (saved && exp && Date.now() < parseInt(exp)) {
     accessToken = saved;
+    restoreFolderStack();
     showScreen('browser-screen');
-    loadFolder('163viIZ-EOGjQN2eZA-zY9qWvAHSQEcSn');
+    loadFolder(folderStack[folderStack.length - 1].id);
     return true;
   }
   return false;
@@ -444,6 +454,7 @@ function renderFiles(files) {
     if (isFolder) {
       card.addEventListener('click', () => {
         folderStack.push({ id: file.id, name: file.name });
+        saveFolderStack();
         loadFolder(file.id);
       });
     } else if (isZip) {
