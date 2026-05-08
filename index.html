@@ -278,13 +278,15 @@ function getReadHistory() {
 }
 function markRead(showKey, epIdx) {
   const h = getReadHistory();
-  if (!h[showKey]) h[showKey] = { lastRead: epIdx, read: [] };
-  h[showKey].lastRead = epIdx;
-  if (!h[showKey].read.includes(epIdx)) h[showKey].read.push(epIdx);
+  if (!h[showKey]) h[showKey] = { lastRead: null, lastIdx: null, read: [] };
+  const zipName = currentZips[epIdx]?.name || '';
+  h[showKey].lastRead = zipName;
+  h[showKey].lastIdx  = epIdx;
+  if (!h[showKey].read.includes(zipName)) h[showKey].read.push(zipName);
   localStorage.setItem('readHistory', JSON.stringify(h));
 }
 function getShowHistory(showKey) {
-  return getReadHistory()[showKey] || { lastRead: null, read: [] };
+  return getReadHistory()[showKey] || { lastRead: null, lastIdx: null, read: [] };
 }
 function makeShowKey(title) {
   return title.trim().toLowerCase().replace(/\s+/g, '_');
@@ -493,19 +495,24 @@ function openLibrary(zips, clickedFile) {
   const history = getShowHistory(showKey);
   const resumeBtn = document.getElementById('resume-btn');
 
-  if (history.lastRead !== null) {
+  // Find last read episode by zip name
+  const lastIdx = history.lastRead
+    ? currentZips.findIndex(z => z.name === history.lastRead)
+    : -1;
+
+  if (lastIdx >= 0) {
     resumeBtn.classList.add('show');
-    const lastName = currentZips[history.lastRead]?.name.replace(/\.zip$/i, '') || '';
+    const lastName = currentZips[lastIdx].name.replace(/\.zip$/i, '');
     resumeBtn.textContent = '▶ 이어보기 — ' + lastName;
-    resumeBtn.onclick = () => openEpisode(history.lastRead);
+    resumeBtn.onclick = () => openEpisode(lastIdx);
   } else {
     resumeBtn.classList.remove('show');
   }
 
   currentZips.forEach((zip, i) => {
     const name = zip.name.replace(/\.zip$/i, '');
-    const isRead = history.read.includes(i);
-    const isLast = history.lastRead === i;
+    const isRead = history.read.includes(zip.name);
+    const isLast = i === lastIdx;
 
     const card = document.createElement('div');
     card.className = 'ep-card' + (isLast ? ' last-read' : isRead ? ' read' : '');
