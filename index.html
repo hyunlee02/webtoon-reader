@@ -289,7 +289,7 @@ function getShowHistory(showKey) {
 function makeShowKey(title) {
   return title.trim().toLowerCase().replace(/\s+/g, '_');
 }
-let folderStack = [{ id: 'root', name: 'My Drive' }];
+let folderStack = [{ id: '163viIZ-EOGjQN2eZA-zY9qWvAHSQEcSn', name: '웹툰' }];
 let currentZips = [];
 let currentEp   = 0;
 let imageURLs   = [];
@@ -301,7 +301,7 @@ function restoreToken() {
   if (saved && exp && Date.now() < parseInt(exp)) {
     accessToken = saved;
     showScreen('browser-screen');
-    loadFolder('root');
+    loadFolder('163viIZ-EOGjQN2eZA-zY9qWvAHSQEcSn');
     return true;
   }
   return false;
@@ -339,7 +339,7 @@ document.getElementById('login-btn').addEventListener('click', () => {
         localStorage.setItem('gtoken', accessToken);
         localStorage.setItem('gtoken_exp', Date.now() + 55 * 60 * 1000);
         showScreen('browser-screen');
-        loadFolder('root');
+        loadFolder('163viIZ-EOGjQN2eZA-zY9qWvAHSQEcSn');
       }
     }
   });
